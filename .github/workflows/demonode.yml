@@ -97,12 +97,12 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: docker.io/anaisurlichs/cns-website:${{ github.sha }}
+          tags: docker.io/carlo02sorre/demonode:main
       - 
         name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'docker.io/anaisurlichs/cns-website:${{ github.sha }}'
+          image-ref: 'docker.io/carlo02sorre/demonode:main'
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
