@@ -92,9 +92,6 @@ jobs:
           name: trivy-report.json
           path: trivy-report.json
 
-      - name: Fix permissions on trivy-report.json
-        run: chmod +r trivy-report.json
-
       - name: Get values from the package.json
         id: packageJson
         uses: RadovanPelka/github-action-json@main
