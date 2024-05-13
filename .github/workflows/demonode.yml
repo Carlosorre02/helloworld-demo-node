@@ -84,3 +84,17 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           #severity: 'CRITICAL,HIGH'
+
+      # Extract vulnerabilities from Trivy JSON output
+      - name: Extract vulnerabilities
+        id: extract_vulnerabilities
+        run: |
+          vulnerabilities=$(echo "${{ steps.trivy-scan.outputs.vulnerabilities }}" | jq -r '.[].Vulnerabilities[] | {severity: .Severity, package: .PkgName, version: .InstalledVersion, description: .Description}')
+          echo "::set-output name=vulnerabilities::$vulnerabilities"
+          
+      # Print vulnerabilities
+      - name: Print vulnerabilities
+        run: |
+          echo "${{ steps.extract_vulnerabilities.outputs.vulnerabilities }}" | while IFS= read -r line; do
+            echo "$line"
+          done
