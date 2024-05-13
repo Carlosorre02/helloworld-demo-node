@@ -1,0 +1,39 @@
+name: Extract Trivy Vulnerabilities
+
+on:
+  workflow_run:
+    workflows: ["demonode1"]
+    types:
+      - completed
+
+jobs:
+  extract_vulnerabilities:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Install jq to parse JSON
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install jq -y
+
+      # Get the Trivy JSON output from the artifacts
+      - name: Download Trivy JSON output
+        uses: actions/download-artifact@v2
+        with:
+          name: trivy-report
+
+      # Parse Trivy JSON output and extract vulnerabilities
+      - name: Extract vulnerabilities
+        id: extract_vulnerabilities
+        run: |
+          vulnerabilities=$(jq -r '.[].Vulnerabilities[] | {severity: .Severity, package: .PkgName, version: .InstalledVersion, description: .Description}' trivy-report.json)
+          echo "::set-output name=vulnerabilities::$vulnerabilities"
+
+      # Iterate over each vulnerability and print details
+      - name: Print vulnerabilities
+        run: |
+          echo "${{ steps.extract_vulnerabilities.outputs.vulnerabilities }}" | while IFS= read -r line; do
+            echo "$line"
+          done
