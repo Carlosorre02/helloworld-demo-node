@@ -85,12 +85,14 @@ jobs:
           vuln-type: 'os,library'
           #severity: 'CRITICAL,HIGH'
 
-      # Extract vulnerabilities from Trivy JSON output
+        # Estrazione delle vulnerabilità dall'output JSON di Trivy e aggiunta al file di ambiente
       - name: Extract vulnerabilities
         id: extract_vulnerabilities
         run: |
-          echo "${{ steps.trivy-scan.outputs.vulnerabilities }}" | jq -r '.[].Vulnerabilities[] | {severity: .Severity, package: .PkgName, version: .InstalledVersion, description: .Description}' >> $GITHUB_ENV
-          
-      # Print vulnerabilities
+        echo "VULNERABILITIES=$(echo "${{ steps.trivy-scan.outputs.vulnerabilities }}" | jq -r '.[].Vulnerabilities[] | {severity: .Severity, package: .PkgName, version: .InstalledVersion, description: .Description}') >> $GITHUB_ENV"
+
+        # Stampa delle vulnerabilità
       - name: Print vulnerabilities
-        run: cat $GITHUB_ENV
+        run: |
+        echo "Vulnerabilities: $VULNERABILITIES"
+
