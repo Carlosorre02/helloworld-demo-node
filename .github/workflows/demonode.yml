@@ -89,12 +89,8 @@ jobs:
       - name: Extract vulnerabilities
         id: extract_vulnerabilities
         run: |
-          vulnerabilities=$(echo "${{ steps.trivy-scan.outputs.vulnerabilities }}" | jq -r '.[].Vulnerabilities[] | {severity: .Severity, package: .PkgName, version: .InstalledVersion, description: .Description}')
-          echo "::set-output name=vulnerabilities::$vulnerabilities"
+          echo "${{ steps.trivy-scan.outputs.vulnerabilities }}" | jq -r '.[].Vulnerabilities[] | {severity: .Severity, package: .PkgName, version: .InstalledVersion, description: .Description}' >> $GITHUB_ENV
           
       # Print vulnerabilities
       - name: Print vulnerabilities
-        run: |
-          echo "${{ steps.extract_vulnerabilities.outputs.vulnerabilities }}" | while IFS= read -r line; do
-            echo "$line"
-          done
+        run: cat $GITHUB_ENV
