@@ -80,17 +80,10 @@ jobs:
         with:
           image-ref: 'docker.io/carlo02sorre/demonode:main'
           format: 'json'
+          output: 'trivy-report.json'
           exit-code: '0'
           ignore-unfixed: true
           vuln-type: 'os,library'
-          #severity: 'CRITICAL,HIGH'
-
-      - name: Extract Vulnerabilities
-        run: |
-          VULNERABILITIES=$(jq -r '.Results[].Vulnerabilities[] | {severity: .Severity, package: .PkgName, version: .InstalledVersion, description: .Description}' trivy_report.json)
-          echo "VULNERABILITIES=$VULNERABILITIES" >> $GITHUB_ENV
-
-      - name: Display Vulnerabilities
-        run: |
-          echo "$VULNERABILITIES"
+          severity: 'CRITICAL,HIGH'
+          
 
