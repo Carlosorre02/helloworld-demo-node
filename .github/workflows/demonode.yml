@@ -100,5 +100,28 @@ jobs:
       
       - run: |
           echo ${{steps.json_properties.outputs.ArtifactName}}
+
+      - name: Show Trivy Vulnerabilities
+        run: |
+          echo "Vulnerabilities found in image: ${{ env.IMAGE_NAME }}"
+
+          # Loop through each vulnerability entry in the results
+          for vulnerability in $(jq -r '.Results[] | select(.Class == "vulnerability") | @base64' trivy-report.json); do
+            # Decode the base64 entry to get the JSON data
+            vulnerability_json=$(echo $vulnerability | base64 --decode)
+
+            # Extract relevant fields from the vulnerability JSON
+            target=$(echo $vulnerability_json | jq -r '.Target')
+            severity=$(echo $vulnerability_json | jq -r '.Severity')
+            title=$(echo $vulnerability_json | jq -r '.VulnerabilityID')
+            description=$(echo $vulnerability_json | jq -r '.Description')
+
+            # Print vulnerability information
+            echo "Vulnerability: $title"
+            echo "  Severity: $severity"
+            echo "  Target: $target"
+            echo "  Description: $description"
+          done
+
           
 
