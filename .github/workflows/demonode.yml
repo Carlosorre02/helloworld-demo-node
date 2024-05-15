@@ -92,12 +92,13 @@ jobs:
           name: trivy-report.json
           path: trivy-report.json
 
-      - name: Get values from the package.json
-        id: packageJson
-        uses: RadovanPelka/github-action-json@main
+      - name: get properties
+        id: json_properties
+        uses: ActionsTools/read-json-action@main
         with:
-          path: "trivy-report.json" # default value
-
-      - run: echo "name - ${{ steps.packageJson.outputs.ImageID }}"
+          file_path: "trivy-report.json"
+      
+      - run: |
+          echo ${{steps.json_properties.outputs.ArtifactName}}
           
 
