@@ -93,7 +93,7 @@ jobs:
           path: trivy-report.json
 
       - name: Run custom action
-        uses: Carlosorre02/project-action@v1.2
+        uses: Carlosorre02/project-action@v1.1
         with:
           trivy_report: 'trivy-report.json'
 
