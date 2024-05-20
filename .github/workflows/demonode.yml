@@ -92,29 +92,8 @@ jobs:
           name: trivy-report.json
           path: trivy-report.json
 
-      - name: get properties
-        id: json_properties
-        uses: ActionsTools/read-json-action@main
+      - name: Run custom action
+        uses: Carlosrre02/project-action@main
         with:
-          file_path: "trivy-report.json"
-      
-      - run: |
-          echo ${{steps.json_properties.outputs.ArtifactName}}
+          trivy_report: 'trivy-report.json'
 
-      - name: Show Trivy Vulnerabilities
-        run: |
-          echo "Vulnerabilities found in image: ${{ env.IMAGE_NAME }}"
-          
-          for vulnerability in $(jq -r '.Results[] | select(.Class == "vulnerability") | @base64' trivy-report.json); do
-            vulnerability_json=$(echo $vulnerability | base64 --decode)
-            
-            target=$(echo $vulnerability_json | jq -r '.Target')
-            severity=$(echo $vulnerability_json | jq -r '.Severity')
-            title=$(echo $vulnerability_json | jq -r '.VulnerabilityID')
-            description=$(echo $vulnerability_json | jq -r '.Description')
-
-            echo "Vulnerability: $title"
-            echo "  Severity: $severity"
-            echo "  Target: $target"
-            echo "  Description: $description"
-          done
