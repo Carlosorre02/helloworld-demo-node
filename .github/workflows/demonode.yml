@@ -93,7 +93,7 @@ jobs:
           path: trivy-report.json
 
       - name: Parse Trivy Report
-        uses: Carlosorre02/project-action@v1.2
+        uses: Carlosorre02/project-action@v1.3
         with:
           trivy-report: 'trivy-report.json'
 
