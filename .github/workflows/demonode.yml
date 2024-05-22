@@ -92,8 +92,8 @@ jobs:
           name: trivy-report.json
           path: trivy-report.json
 
-      - name: Run custom action
-        uses: Carlosorre02/project-action@v1.2
+      - name: Parse Trivy Report
+        uses: Carlosorre02/project-action@v1.1
         with:
-          trivy_report: 'trivy-report.json'
+          trivy-report: 'trivy-report.json'
 
