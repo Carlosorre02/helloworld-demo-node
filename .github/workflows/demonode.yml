@@ -71,7 +71,8 @@ jobs:
       # Step: Discovery Immagine Base e stampa
       - name: Discovery and Print Image Base
         run: |
-          BASE_IMAGE=$(grep "^FROM" Dockerfile | cut -d' ' -f2)
+          NODE_VERSION=$(grep "^ARG NODE_VERSION" Dockerfile | cut -d'=' -f2)
+          BASE_IMAGE=$(grep "^FROM" Dockerfile | sed "s/\${NODE_VERSION}/$NODE_VERSION/")
           echo "Base image used: $BASE_IMAGE"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
