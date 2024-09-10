@@ -68,18 +68,28 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Step: Discovery Immagine Base e Scansione
-      - name: Discovery and Scan Base Image
+      # Step: Discovery Immagine Base e utilizzo
+      - name: Discovery and Use Base Image
+        id: get_base_image
         run: |
           NODE_VERSION=$(grep "^ARG NODE_VERSION" Dockerfile | cut -d'=' -f2)
-          BASE_IMAGE=$(grep "^FROM" Dockerfile | sed "s/FROM //g" | sed "s/\${NODE_VERSION}/$NODE_VERSION/")
+          BASE_IMAGE=$(grep "^FROM" Dockerfile | sed "s/\${NODE_VERSION}/$NODE_VERSION/")
           echo "Base image used: $BASE_IMAGE"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
-          # Eseguire la scansione con Trivy sull'immagine base
-          trivy image --format json --exit-code 0 --ignore-unfixed --vuln-type os,library --output trivy-report.json $BASE_IMAGE
+      # Install Trivy before scanning
+      - name: Install Trivy
+        run: |
+          sudo apt-get install wget -y
+          wget https://github.com/aquasecurity/trivy/releases/download/v0.29.2/trivy_0.29.2_Linux-64bit.deb
+          sudo dpkg -i trivy_0.29.2_Linux-64bit.deb
 
-      - name: Upload Trivy Report
+      # Run Trivy on Base Image (not the built image)
+      - name: Run Trivy vulnerability scanner on Base Image
+        run: |
+          trivy image ${{ env.BASE_IMAGE }} --format json --output trivy-report.json --ignore-unfixed --vuln-type os,library
+
+      - name: Upload MobSF Analysis JSON Result
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report.json
