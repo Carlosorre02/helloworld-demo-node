@@ -1,10 +1,5 @@
 name: demonode1
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 on:
   workflow_dispatch
 
@@ -14,10 +9,8 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: carlo02sorre/demonode
 
-
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -74,7 +67,15 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          
+
+          # Step: Discovery Immagine Base
+      - name: Discovery Image Base
+        id: get_base_image
+        run: |
+          BASE_IMAGE=$(grep "^FROM" Dockerfile | cut -d' ' -f2)
+          echo "Base image: $BASE_IMAGE"
+          echo "::set-output name=base_image::$BASE_IMAGE"
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -97,3 +98,5 @@ jobs:
         with:
           trivy-report: 'trivy-report.json'
 
+      - name: Print Base Image
+        run: echo "The base image used in this Dockerfile is ${{ steps.get_base_image.outputs.base_image }}"
