@@ -68,13 +68,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-          # Step: Discovery Immagine Base
+         # Step: Discovery Immagine Base
       - name: Discovery Image Base
         id: get_base_image
         run: |
           BASE_IMAGE=$(grep "^FROM" Dockerfile | cut -d' ' -f2)
-          echo "Base image: $BASE_IMAGE"
-          echo "::set-output name=base_image::$BASE_IMAGE"
+          echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
