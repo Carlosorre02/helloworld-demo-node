@@ -80,6 +80,8 @@ jobs:
       # Run Trivy on Base Image (not the built image)
       - name: Run Trivy vulnerability scanner on Base Image
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
         with:
           image-ref: ${{ env.BASE_IMAGE }}  # Usa l'immagine base ottenuta
           format: 'json'
