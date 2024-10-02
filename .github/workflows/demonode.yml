@@ -92,9 +92,7 @@ jobs:
 
       # Step per installare le dipendenze del progetto (npm install)
       - name: Install dependencies for project-action
-        run: |
-          cd path/to/project-action
-          npm install
+        run: npm install
 
       # Parse Trivy Report usando l'action personalizzata
       - name: Parse Trivy Report
