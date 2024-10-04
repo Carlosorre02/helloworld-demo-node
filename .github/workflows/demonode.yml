@@ -4,9 +4,7 @@ on:
   workflow_dispatch
 
 env:
-  # Use docker.io for Docker Hub if empty
   REGISTRY: docker.io
-  # github.repository as <account>/<repo>
   IMAGE_NAME: carlo02sorre/demonode
 
 jobs:
@@ -15,8 +13,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
       id-token: write
 
     steps:
@@ -35,7 +31,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.0.0
 
-      # Login against a Docker registry except on PR
+      # Login to Docker registry except on PR
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3.0.0
@@ -86,12 +82,12 @@ jobs:
           vuln-type: 'os,library'
           severity: CRITICAL, HIGH
 
-      # Step: Install dependencies (npm install)
+      # Install dependencies for the custom action
       - name: Install dependencies
         run: npm install
 
       # Upload MobSF Analysis JSON Result
-      - name: Upload MobSF Analysis JSON Result
+      - name: Upload Trivy Analysis JSON Result
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report.json
