@@ -77,23 +77,27 @@ jobs:
           echo "Base image used: $BASE_IMAGE"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
-      # Avvia il server Trivy in background
-      - name: Start Trivy Server
-        run: |
-          nohup trivy server &
+      # Run Trivy on Base Image (not the built image)
+      - name: Run Trivy vulnerability scanner on Base Image
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
+        with:
+          image-ref: ${{ env.BASE_IMAGE }}  # Usa l'immagine base ottenuta
+          format: 'json'
+          output: 'trivy-report.json'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: CRITICAL, HIGH
 
-      # Aspetta che il server Trivy sia pronto (puoi adattare il tempo di attesa se necessario)
-      - name: Wait for Trivy Server
-        run: sleep 10
-
-      # Esegui lo script Node.js per eseguire la scansione
-      - name: Run Node.js script for scanning
-        run: |
-          node index.js
-
-      # Carica i report generati dal Trivy scanner
-      - name: Upload Trivy Reports
+      - name: Upload MobSF Analysis JSON Result
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-reports
-          path: '*.json'
+          name: trivy-report.json
+          path: trivy-report.json
+
+      - name: Parse Trivy Report
+        uses: Carlosorre02/project-action@main
+        with:
+          trivy-report: 'trivy-report.json'
