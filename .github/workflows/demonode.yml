@@ -4,7 +4,9 @@ on:
   workflow_dispatch
 
 env:
+  # Use docker.io for Docker Hub if empty
   REGISTRY: docker.io
+  # github.repository as <account>/<repo>
   IMAGE_NAME: carlo02sorre/demonode
 
 jobs:
@@ -13,38 +15,51 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
       id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Install the cosign tool except on PR
+      # https://github.com/sigstore/cosign-installer
       - name: Install cosign
         if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@6e04d228eb30da1757ee4e1dd75a0ec73a653e06 #v3.1.1
         with:
           cosign-release: 'v2.1.1'
 
+      # Set up BuildKit Docker container builder to be able to build
+      # multi-platform images and export cache
+      # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.0.0
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
 
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3.0.0
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.DEMO_NODE }}
 
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5.0.0
+        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@v5.0.0
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
@@ -53,6 +68,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Step: Discovery Immagine Base e utilizzo
       - name: Discovery and Use Base Image
         id: get_base_image
         run: |
@@ -61,31 +77,27 @@ jobs:
           echo "Base image used: $BASE_IMAGE"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
-      - name: Install Node.js and Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y nodejs npm
+      # Run Trivy on Base Image (not the built image)
+      - name: Run Trivy vulnerability scanner on Base Image
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
+        with:
+          image-ref: ${{ env.BASE_IMAGE }}  # Usa l'immagine base ottenuta
+          format: 'json'
+          output: 'trivy-report.json'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: CRITICAL, HIGH
 
-      - name: Run index.js to Fetch Newer Versions
-        run: |
-          node index.js
-
-      - name: Run Trivy on First 5 Base Image Versions
-        run: |
-          TAGS=$(node index.js | tail -n 5)
-          for TAG in $TAGS; do
-            echo "Running Trivy on $TAG"
-            docker pull $TAG
-            docker run --rm -v $(pwd):/root/.cache/ aquasec/trivy image --format json --output ${TAG}-trivy-report.json $TAG
-          done
-
-      - name: Upload Trivy Reports
+      - name: Upload MobSF Analysis JSON Result
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-reports
-          path: '*.json'
+          name: trivy-report.json
+          path: trivy-report.json
 
-      - name: Parse Trivy Reports
+      - name: Parse Trivy Report
         uses: Carlosorre02/project-action@main
         with:
-          trivy-report: '*.json'
+          trivy-report: 'trivy-report.json'
