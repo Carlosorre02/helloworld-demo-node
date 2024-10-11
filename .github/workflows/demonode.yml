@@ -84,7 +84,7 @@ jobs:
           exit-code: '0'
           ignore-unfixed: true
           vuln-type: 'os,library'
-          severity: CRITICAL,HIGH
+          severity: MEDIUM,HIGH,CRITICAL
 
       # Upload the Trivy JSON Report
       - name: Upload Trivy JSON Report
