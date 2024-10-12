@@ -88,3 +88,9 @@ jobs:
         with:
           name: trivy-report-${{ env.BASE_IMAGE }}.json
           path: trivy-report.json
+
+      # Chiamata alla tua custom action "project-action"
+      - name: Parse Trivy Report
+        uses: Carlosorre02/project-action@main
+        with:
+          trivy-report: 'trivy-report.json'
