@@ -75,11 +75,14 @@ jobs:
           vuln-type: 'os,library'
           severity: MEDIUM,HIGH,CRITICAL
 
-      - name: Upload Trivy JSON Report
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Upload Trivy JSON Reports
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-report.json
-          path: trivy-report.json
+          name: trivy-reports
+          path: ./reports/
 
       - name: Parse Trivy Report
         uses: Carlosorre02/project-action@main
@@ -89,5 +92,5 @@ jobs:
       - name: Download Trivy Reports
         uses: actions/download-artifact@v3
         with:
-          name: trivy-report.json
+          name: trivy-reports
           path: ./reports/
