@@ -4,7 +4,9 @@ on:
   workflow_dispatch
 
 env:
+  # Use docker.io for Docker Hub if empty
   REGISTRY: docker.io
+  # github.repository as <account>/<repo>
   IMAGE_NAME: carlo02sorre/demonode
 
 jobs:
@@ -13,12 +15,15 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
       id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Installazione di Trivy
       - name: Install Trivy
         run: |
           sudo apt-get update
@@ -26,9 +31,11 @@ jobs:
           wget https://github.com/aquasecurity/trivy/releases/download/v0.44.0/trivy_0.44.0_Linux-64bit.deb
           sudo dpkg -i trivy_0.44.0_Linux-64bit.deb
 
+      # Set up BuildKit Docker container builder
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Login against a Docker registry except on PR
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -37,12 +44,14 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.DEMO_NODE }}
 
+      # Extract metadata (tags, labels) for Docker
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+      # Build and push Docker image with Buildx (don't push on PR)
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@v5
@@ -54,6 +63,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Step: Discovery Immagine Base e utilizzo
       - name: Discovery and Use Base Image
         id: get_base_image
         run: |
@@ -62,12 +72,13 @@ jobs:
           echo "Base image used: $BASE_IMAGE"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
+      # Run Trivy on Base Image (not the built image)
       - name: Run Trivy vulnerability scanner on Base Image
         uses: aquasecurity/trivy-action@master
         env:
           TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
         with:
-          image-ref: ${{ env.BASE_IMAGE }}
+          image-ref: ${{ env.BASE_IMAGE }}  # Usa l'immagine base ottenuta
           format: 'json'
           output: 'trivy-report.json'
           exit-code: '0'
@@ -75,22 +86,15 @@ jobs:
           vuln-type: 'os,library'
           severity: MEDIUM,HIGH,CRITICAL
 
-      - name: Create reports directory
-        run: mkdir -p reports
-
-      - name: Upload Trivy JSON Reports
+      # Upload the Trivy JSON Report
+      - name: Upload Trivy JSON Report
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-reports
-          path: ./reports/
+          name: trivy-report.json
+          path: trivy-report.json
 
+      # Parse Trivy Report (custom action)
       - name: Parse Trivy Report
         uses: Carlosorre02/project-action@main
         with:
           trivy-report: 'trivy-report.json'
-
-      - name: Download Trivy Reports
-        uses: actions/download-artifact@v3
-        with:
-          name: trivy-reports
-          path: ./reports/
