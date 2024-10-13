@@ -1,211 +1,87 @@
-const fs = require("fs");
-const core = require("@actions/core");
-const axios = require("axios");
-const semver = require('semver');
-const { exec } = require('child_process');
-const artifactClient = require('@actions/artifact');
+name: demonode1
 
-// Funzione per aggiungere un ritardo
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+on:
+  workflow_dispatch
 
-const reportPath = core.getInput("trivy-report");
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: carlo02sorre/demonode
 
-if (!reportPath) {
-    core.setFailed("Report path is required");
-    process.exit(1);
-}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
 
-fs.readFile(reportPath, "utf8", async (err, data) => {
-    if (err) {
-        core.setFailed(`Error reading the report: ${err.message}`);
-        process.exit(1);
-    }
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    try {
-        const report = JSON.parse(data);
-        const artifactName = report.ArtifactName;
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install wget -y
+          wget https://github.com/aquasecurity/trivy/releases/download/v0.44.0/trivy_0.44.0_Linux-64bit.deb
+          sudo dpkg -i trivy_0.44.0_Linux-64bit.deb
 
-        if (!artifactName) {
-            core.setFailed("ArtifactName is undefined or missing in the report.");
-            process.exit(1);
-        }
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-        // Log dell'immagine base
-        core.info(`Base Image: ${artifactName}`);
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.DEMO_NODE }}
 
-        const extractVulnInfo = (vulnerabilities) => {
-            return vulnerabilities.map(vuln => ({
-                Target: vuln.Target,
-                PkgName: vuln.PkgName,
-                VulnerabilityID: vuln.VulnerabilityID,
-                Severity: vuln.Severity,
-                InstalledVersion: vuln.InstalledVersion,
-                FixedVersion: vuln.FixedVersion || "No fix available"
-            }));
-        };
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-        report.Results.forEach(result => {
-            if (result.Target && result.Target !== "Node.js") {
-                core.info(`Target: ${result.Target}`);
-            }
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-            const relevantVulns = extractVulnInfo(result.Vulnerabilities || []);
+      - name: Discovery and Use Base Image
+        id: get_base_image
+        run: |
+          NODE_VERSION=$(grep "^ARG NODE_VERSION" Dockerfile | cut -d'=' -f2)
+          BASE_IMAGE=$(grep "^FROM" Dockerfile | sed "s/\${NODE_VERSION}/$NODE_VERSION/" | cut -d' ' -f2)
+          echo "Base image used: $BASE_IMAGE"
+          echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
-            relevantVulns.forEach(vulnInfo => {
-                core.info(`Package: ${vulnInfo.PkgName}`);
-                core.info(`Vulnerability ID: ${vulnInfo.VulnerabilityID}`);
-                core.info(`Severity: ${vulnInfo.Severity}`);
-                core.info(`Installed Version: ${vulnInfo.InstalledVersion}`);
-                core.info(`Fixed Version: ${vulnInfo.FixedVersion}`);
-                core.info("---");
-            });
+      - name: Run Trivy vulnerability scanner on Base Image
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
+        with:
+          image-ref: ${{ env.BASE_IMAGE }}
+          format: 'json'
+          output: 'trivy-report.json'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: MEDIUM,HIGH,CRITICAL
 
-            if (relevantVulns.length === 0 && result.Target && result.Target !== "Node.js") {
-                core.info(`Nessuna vulnerabilità trovata per ${result.Target}`);
-            }
-        });
+      - name: Upload Trivy JSON Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report.json
+          path: trivy-report.json
 
-        const parts = artifactName.split(":")[0].split("/");
-
-        let namespace = "library";
-        let repository = parts[0];
-
-        if (parts.length === 2) {
-            namespace = parts[0];
-            repository = parts[1];
-        }
-
-        core.info(`Namespace: ${namespace}`);
-        core.info(`Repository: ${repository}`);
-
-        const getAlpineTags = async (namespace, repository, currentTag) => {
-            let url = `https://hub.docker.com/v2/repositories/${namespace}/${repository}/tags/?name=alpine&page_size=100`;
-            let tags = [];
-
-            while (url) {
-                try {
-                    const response = await axios.get(url);
-                    const pageTags = response.data.results;
-
-                    if (!pageTags.length) {
-                        core.setFailed("No tags found for the specified repository.");
-                        process.exit(1);
-                    }
-
-                    const currentVersion = currentTag.split(":")[1].split("-alpine")[0];
-
-                    pageTags.forEach(tag => {
-                        const tagVersion = tag.name.split("-alpine")[0];
-
-                        if (tag.name.includes("alpine") && semver.valid(tagVersion) && semver.gt(tagVersion, currentVersion)) {
-                            tags.push(tag.name);
-                        }
-                    });
-
-                    url = response.data.next;
-                } catch (apiErr) {
-                    core.setFailed(`Error fetching tags from Docker Hub: ${apiErr.message}`);
-                    process.exit(1);
-                }
-            }
-
-            return tags;
-        };
-
-        const currentTag = artifactName;
-        const alpineTags = await getAlpineTags(namespace, repository, currentTag);
-
-        const sortTags = (tags) => {
-            return tags.sort((a, b) => {
-                const [versionA] = a.split("-alpine");
-                const [versionB] = b.split("-alpine");
-
-                return semver.compare(versionA, versionB);
-            });
-        };
-
-        if (alpineTags.length > 0) {
-            const sortedTags = sortTags(alpineTags);
-            core.info("Alpine Tags ordinati:");
-            sortedTags.forEach(tag => core.info(`  Tag: ${tag}`));
-
-            const top5Images = sortedTags.slice(0, 5);
-
-            const trivyScan = async (image, reportFileName) => {
-                const fullImageName = `library/node:${image}`;
-                return new Promise((resolve, reject) => {
-                    exec(`trivy image --format json --output ${reportFileName} --severity MEDIUM,HIGH,CRITICAL ${fullImageName}`, 
-                    (error, stdout, stderr) => {
-                        if (error) {
-                            reject(`Errore durante la scansione di Trivy per l'immagine ${fullImageName}: ${stderr}`);
-                        } else {
-                            resolve(`Trivy report per ${fullImageName} salvato.`);
-                        }
-                    });
-                });
-            };
-
-            const parseTrivyReport = (image) => {
-                const reportPath = `trivy-report-${image}.json`;
-                const reportData = fs.readFileSync(reportPath, "utf8");
-                const report = JSON.parse(reportData);
-
-                report.Results.forEach(result => {
-                    if (result.Target && result.Target !== "Node.js") {
-                        core.info(`Target: ${result.Target}`);
-                    }
-
-                    const vulnerabilities = result.Vulnerabilities || [];
-
-                    if (vulnerabilities.length > 0) {
-                        vulnerabilities.forEach(vuln => {
-                            core.info(`Package: ${vuln.PkgName}`);
-                            core.info(`Vulnerability ID: ${vuln.VulnerabilityID}`);
-                            core.info(`Severity: ${vuln.Severity}`);
-                            core.info(`Installed Version: ${vuln.InstalledVersion}`);
-                            core.info(`Fixed Version: ${vuln.FixedVersion || "No fix available"}`);
-                            core.info("---");
-                        });
-                    } else if (result.Target && result.Target !== "Node.js") {
-                        core.info(`Nessuna vulnerabilità trovata per ${result.Target}`);
-                    }
-                });
-            };
-
-            const uploadArtifactForImage = async (reportFileName) => {
-                const artifactName = `trivy-report-${reportFileName}`;
-                
-                const uploadResult = await artifactClient.create().uploadArtifact(
-                    artifactName,
-                    [reportFileName],
-                    process.cwd()
-                );
-
-                core.info(`Report caricato per immagine ${reportFileName}: ${uploadResult.artifactItems}`);
-            };
-
-            for (const image of top5Images) {
-                core.info(`Inizio scansione per immagine: ${image}`);
-                try {
-                    const reportFileName = `trivy-report-${image}.json`;
-
-                    await trivyScan(image, reportFileName);
-
-                    await uploadArtifactForImage(reportFileName);
-
-                    parseTrivyReport(image);
-
-                    await sleep(10000);
-                } catch (err) {
-                    core.setFailed(`Errore nella scansione di ${image}: ${err}`);
-                }
-            }
-        } else {
-            core.info("Non sono stati trovati tag Alpine più recenti.");
-        }
-
-    } catch (parseErr) {
-        core.setFailed(`Error parsing the report: ${parseErr.message}`);
-        process.exit(1);
-    }
-});
+      - name: Parse Trivy Report
+        uses: Carlosorre02/project-action@main
+        with:
+          trivy-report: 'trivy-report.json'
