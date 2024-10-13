@@ -98,3 +98,10 @@ jobs:
         uses: Carlosorre02/project-action@main
         with:
           trivy-report: 'trivy-report.json'
+
+      # Carica il report JSON generato da Trivy per il download locale
+      - name: Upload Trivy JSON Report for Download
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-${{ steps.get_base_image.outputs.BASE_IMAGE }}.json
+          path: trivy-report.json
