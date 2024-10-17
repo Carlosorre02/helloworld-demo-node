@@ -1,1 +1,69 @@
+name: demonode1
+
+on:
+  workflow_dispatch
+  # Aggiungi un input per specificare il nome del repository esterno
+  inputs:
+    repository:
+      description: 'Repository to clone'
+      required: true
+      default: ''
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: carlo02sorre/demonode
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}  # Usa il parametro repository specificato dall'utente
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install wget -y
+          wget https://github.com/aquasecurity/trivy/releases/download/v0.44.0/trivy_0.44.0_Linux-64bit.deb
+          sudo dpkg -i trivy_0.44.0_Linux-64bit.deb
+
+      - name: Discovery and Use Base Image
+        id: get_base_image
+        run: |
+          NODE_VERSION=$(grep "^ARG NODE_VERSION" Dockerfile | cut -d'=' -f2)
+          BASE_IMAGE=$(grep "^FROM" Dockerfile | sed "s/\${NODE_VERSION}/$NODE_VERSION/" | cut -d' ' -f2)
+          echo "Base image used: $BASE_IMAGE"
+          echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
+
+      - name: Run Trivy vulnerability scanner on Base Image
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
+        with:
+          image-ref: ${{ env.BASE_IMAGE }}
+          format: 'json'
+          output: 'trivy-report.json'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+
+      - name: Upload Trivy JSON Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report.json
+          path: trivy-report.json
+
+      - name: Parse Trivy Report
+        uses: Carlosorre02/project-action@main
+        with:
+          trivy-report: 'trivy-report.json'
 
