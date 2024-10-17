@@ -1,13 +1,12 @@
-name: demonode1
+name: demonode2
 
 on:
-  workflow_dispatch
-  # Aggiungi un input per specificare il nome del repository esterno
-  inputs:
-    repository:
-      description: 'Repository to clone'
-      required: true
-      default: ''
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: 'Repository to clone'
+        required: true
+        default: ''
 
 env:
   REGISTRY: docker.io
@@ -66,4 +65,3 @@ jobs:
         uses: Carlosorre02/project-action@main
         with:
           trivy-report: 'trivy-report.json'
-
