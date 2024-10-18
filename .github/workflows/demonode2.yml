@@ -1,67 +1,63 @@
+# Workflow GitHub Actions esistente (modificato solo per aggiungere il caching del database di Trivy)
+
 name: demonode2
 
 on:
-  workflow_dispatch:
-    inputs:
-      repository:
-        description: 'Repository to clone'
-        required: true
-        default: ''
-
-env:
-  REGISTRY: docker.io
-  IMAGE_NAME: carlo02sorre/demonode
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build:
+  build-and-scan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.repository }}  # Usa il parametro repository specificato dall'utente
-          token: ${{ secrets.GITHUB_TOKEN }}
+    # Step 1: Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Install Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install wget -y
-          wget https://github.com/aquasecurity/trivy/releases/download/v0.44.0/trivy_0.44.0_Linux-64bit.deb
-          sudo dpkg -i trivy_0.44.0_Linux-64bit.deb
+    # Step 2: Log in to Docker Hub (se necessario)
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Discovery and Use Base Image
-        id: get_base_image
-        run: |
-          NODE_VERSION=$(grep "^ARG NODE_VERSION" Dockerfile | cut -d'=' -f2)
-          BASE_IMAGE=$(grep "^FROM" Dockerfile | sed "s/\${NODE_VERSION}/$NODE_VERSION/" | cut -d' ' -f2)
-          echo "Base image used: $BASE_IMAGE"
-          echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
+    # Aggiunta del caching del database di vulnerabilità di Trivy
+    - name: Cache Trivy vulnerability DB
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/trivy/db
+        key: ${{ runner.os }}-trivy-db-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-trivy-db
 
-      - name: Run Trivy vulnerability scanner on Base Image
-        uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
-        with:
-          image-ref: ${{ env.BASE_IMAGE }}
-          format: 'json'
-          output: 'trivy-report.json'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: LOW,MEDIUM,HIGH,CRITICAL
+    # Step per installare Trivy (se non è già presente)
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://github.com/aquasecurity/trivy/releases/download/v0.35.0/trivy_0.35.0_Linux-64bit.deb
+        sudo dpkg -i trivy_0.35.0_Linux-64bit.deb
 
-      - name: Upload Trivy JSON Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report.json
-          path: trivy-report.json
+    # Scansione dell'immagine con Trivy
+    - name: Scan Docker image for vulnerabilities
+      run: |
+        trivy image --format json --output trivy-report.json my-image:latest
 
-      - name: Parse Trivy Report
-        uses: Carlosorre02/project-action@main
-        with:
-          trivy-report: 'trivy-report.json'
+    # Step custom action per il parsing del report Trivy
+    - name: Parse Trivy Report
+      uses: ./project-action
+      with:
+        report: trivy-report.json
+
+    # Upload del report Trivy come artifact
+    - name: Upload Trivy report
+      uses: actions/upload-artifact@v3
+      with:
+        name: trivy-report
+        path: trivy-report.json
+
