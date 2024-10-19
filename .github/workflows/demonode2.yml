@@ -70,7 +70,7 @@ jobs:
           name: trivy-report.json
           path: trivy-report.json
 
-      - name: Parse Trivy Report
+      - name: Custom action
         uses: Carlosorre02/project-action@main
         with:
           trivy-report: 'trivy-report.json'
