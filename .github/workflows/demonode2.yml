@@ -23,11 +23,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        run: |
-          echo "Repo to clone: ${{ inputs.repository }}"
         with:
           repository: ${{ inputs.repository }}  # Usa il parametro repository specificato dall'utente
           token: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            echo "Repo to clone: ${{ inputs.repository }}"
 
       - name: Install Trivy
         run: |
