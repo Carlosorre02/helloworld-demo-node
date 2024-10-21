@@ -25,10 +25,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repository }}  # Usa il parametro repository specificato dall'utente
-          # token: ${{ secrets.GITHUB_TOKEN }}
-          ref: master
+          token: ${{ secrets.GITHUB_TOKEN }}
         
-
       - name: Install Trivy
         run: |
           sudo apt-get update
