@@ -79,7 +79,7 @@ jobs:
         env:
           TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.BASE_IMAGE }}
+          image-ref: ${{ env.BASE_IMAGE }}
           format: 'json'
           output: 'trivy-report.json'
           exit-code: '0'
