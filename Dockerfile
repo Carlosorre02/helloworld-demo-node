@@ -8,7 +8,7 @@
 
 #FROM node:${NODE_VERSION}-alpine
 
-FROM node:18.20.2-alpine
+FROM node:18.20.2
 
 # Use production node environment by default.
 ENV NODE_ENV production
