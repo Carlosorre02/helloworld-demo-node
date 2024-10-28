@@ -43,8 +43,8 @@ jobs:
           # Estrai il tag, gestendo le diverse opzioni di versione (major, major.minor, major.minor.patch)
           IMAGE_TAG=$(echo "$NAME_TAG_PLATFORM" | awk -F'[ :]' '{print $3}' | grep -o '^[0-9]*\.[0-9]*\.[0-9]*\|^[0-9]*\.[0-9]*\|^[0-9]*' || echo "")
 
-          # Estrai la piattaforma, se specificata, ignorando eventuali numeri finali
-          PLATFORM=$(echo "$NAME_TAG_PLATFORM" | awk -F'-' '{print $2}' | sed 's/[0-9]*$//' || echo "")
+          # Estrai la piattaforma, rimuovendo i numeri finali
+          PLATFORM=$(echo "$NAME_TAG_PLATFORM" | awk -F'-' '{print $2}' | sed 's/[0-9]*$//' | grep -o '^[a-zA-Z]*' || echo "")
 
           # Costruisci l'immagine base nel formato richiesto
           BASE_IMAGE="${IMAGE_NAME}"
