@@ -24,9 +24,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.repository }}  # Usa il parametro repository specificato dall'utente
+          repository: ${{ inputs.repository }}
           token: ${{ secrets.GITHUB_TOKEN }}
-        
+
       - name: Install Trivy
         run: |
           sudo apt-get update
@@ -34,7 +34,6 @@ jobs:
           wget https://github.com/aquasecurity/trivy/releases/download/v0.44.0/trivy_0.44.0_Linux-64bit.deb
           sudo dpkg -i trivy_0.44.0_Linux-64bit.deb
 
-      # Aggiungi la cache del database di Trivy
       - name: Cache Trivy vulnerability DB
         uses: actions/cache@v3
         with:
@@ -46,8 +45,29 @@ jobs:
       - name: Discovery and Use Base Image
         id: get_base_image
         run: |
+          # Ottieni NODE_VERSION se specificato
           NODE_VERSION=$(grep "^ARG NODE_VERSION" Dockerfile | cut -d'=' -f2)
-          BASE_IMAGE=$(grep "^FROM" Dockerfile | sed "s/\${NODE_VERSION}/$NODE_VERSION/" | cut -d' ' -f2)
+
+          # Estrai il nome e il tag dal campo FROM
+          BASE_IMAGE_LINE=$(grep "^FROM" Dockerfile)
+          NAME_TAG_PLATFORM=$(echo "$BASE_IMAGE_LINE" | sed "s/\${NODE_VERSION}/$NODE_VERSION/")
+
+          # Estrai il nome dell'immagine
+          IMAGE_NAME=$(echo "$NAME_TAG_PLATFORM" | cut -d' ' -f2 | cut -d':' -f1)
+
+          # Estrai il tag, gestendo le diverse opzioni di versione
+          IMAGE_TAG=$(echo "$NAME_TAG_PLATFORM" | cut -d' ' -f2 | cut -d':' -f2 | cut -d'-' -f1)
+
+          # Estrai la piattaforma, se specificata
+          PLATFORM=$(echo "$NAME_TAG_PLATFORM" | cut -d'-' -f2 | sed 's/[0-9]*$//')
+
+          # Costruisci l'immagine base nel formato richiesto
+          BASE_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
+          if [ -n "$PLATFORM" ]; then
+            BASE_IMAGE="${BASE_IMAGE}-${PLATFORM}"
+          fi
+
+          # Stampa e salva il risultato
           echo "Base image used: $BASE_IMAGE"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
