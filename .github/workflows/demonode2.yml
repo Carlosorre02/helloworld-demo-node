@@ -71,26 +71,26 @@ jobs:
           echo "Base image used: $BASE_IMAGE"
           echo "BASE_IMAGE=$BASE_IMAGE" >> $GITHUB_ENV
 
-      - name: Run Trivy vulnerability scanner on Base Image
-        uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
-        with:
-          image-ref: ${{ env.BASE_IMAGE }}
-          format: 'json'
-          output: 'trivy-report.json'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: LOW,MEDIUM,HIGH,CRITICAL
+      # - name: Run Trivy vulnerability scanner on Base Image
+      #   uses: aquasecurity/trivy-action@master
+      #   env:
+      #     TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
+      #   with:
+      #     image-ref: ${{ env.BASE_IMAGE }}
+      #     format: 'json'
+      #     output: 'trivy-report.json'
+      #     exit-code: '0'
+      #     ignore-unfixed: true
+      #     vuln-type: 'os,library'
+      #     severity: LOW,MEDIUM,HIGH,CRITICAL
 
-      - name: Upload Trivy JSON Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report.json
-          path: trivy-report.json
+      # - name: Upload Trivy JSON Report
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: trivy-report.json
+      #     path: trivy-report.json
 
-      - name: Custom action
-        uses: Carlosorre02/project-action@main
-        with:
-          trivy-report: 'trivy-report.json'
+      # - name: Custom action
+      #   uses: Carlosorre02/project-action@main
+      #   with:
+      #     trivy-report: 'trivy-report.json'
