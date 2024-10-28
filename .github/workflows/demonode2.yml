@@ -27,20 +27,20 @@ jobs:
           repository: ${{ inputs.repository }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install wget -y
-          wget https://github.com/aquasecurity/trivy/releases/download/v0.44.0/trivy_0.44.0_Linux-64bit.deb
-          sudo dpkg -i trivy_0.44.0_Linux-64bit.deb
+     # - name: Install Trivy
+      #  run: |
+       #   sudo apt-get update
+        #  sudo apt-get install wget -y
+         # wget https://github.com/aquasecurity/trivy/releases/download/v0.44.0/trivy_0.44.0_Linux-64bit.deb
+          # sudo dpkg -i trivy_0.44.0_Linux-64bit.deb
 
-      - name: Cache Trivy vulnerability DB
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/trivy/db
-          key: ${{ runner.os }}-trivy-db-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-trivy-db
+     # - name: Cache Trivy vulnerability DB
+     #   uses: actions/cache@v3
+      #  with:
+       #   path: ~/.cache/trivy/db
+        #  key: ${{ runner.os }}-trivy-db-${{ github.sha }}
+        #  restore-keys: |
+         #   ${{ runner.os }}-trivy-db
 
       - name: Discovery and Use Base Image
         id: get_base_image
