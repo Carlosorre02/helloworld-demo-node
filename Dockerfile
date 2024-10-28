@@ -4,9 +4,11 @@
 # If you need more help, visit the Dockerfile reference guide at
 # https://docs.docker.com/engine/reference/builder/
 
-ARG NODE_VERSION=18.20.2
+#ARG NODE_VERSION=18.20.2
 
-FROM node:${NODE_VERSION}-alpine
+#FROM node:${NODE_VERSION}-alpine
+
+FROM node:18.20.2-alpine
 
 # Use production node environment by default.
 ENV NODE_ENV production
