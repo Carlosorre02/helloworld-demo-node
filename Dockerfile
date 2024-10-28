@@ -6,7 +6,7 @@
 
 ARG NODE_VERSION=18.20.2
 
-FROM node:${NODE_VERSION}-alpine3.18
+FROM node:${NODE_VERSION}-alpine
 
 # Use production node environment by default.
 ENV NODE_ENV production
