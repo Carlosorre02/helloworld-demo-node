@@ -27,21 +27,6 @@ jobs:
           repository: ${{ inputs.repository }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-     # - name: Install Trivy
-      #  run: |
-       #   sudo apt-get update
-        #  sudo apt-get install wget -y
-         # wget https://github.com/aquasecurity/trivy/releases/download/v0.44.0/trivy_0.44.0_Linux-64bit.deb
-          # sudo dpkg -i trivy_0.44.0_Linux-64bit.deb
-
-     # - name: Cache Trivy vulnerability DB
-     #   uses: actions/cache@v3
-      #  with:
-       #   path: ~/.cache/trivy/db
-        #  key: ${{ runner.os }}-trivy-db-${{ github.sha }}
-        #  restore-keys: |
-         #   ${{ runner.os }}-trivy-db
-
       - name: Discovery and Use Base Image
         id: get_base_image
         run: |
@@ -53,13 +38,13 @@ jobs:
           NAME_TAG_PLATFORM=$(echo "$BASE_IMAGE_LINE" | sed "s/\${NODE_VERSION}/$NODE_VERSION/")
 
           # Estrai il nome dell'immagine
-          IMAGE_NAME=$(echo "$NAME_TAG_PLATFORM" | cut -d' ' -f2 | cut -d':' -f1)
+          IMAGE_NAME=$(echo "$NAME_TAG_PLATFORM" | awk -F'[ :]' '{print $2}')
 
-          # Estrai il tag, gestendo le diverse opzioni di versione
-          IMAGE_TAG=$(echo "$NAME_TAG_PLATFORM" | cut -d' ' -f2 | cut -d':' -f2 | cut -d'-' -f1)
+          # Estrai il tag, gestendo le diverse opzioni di versione (major, major.minor, major.minor.patch)
+          IMAGE_TAG=$(echo "$NAME_TAG_PLATFORM" | awk -F'[ :-]' '{print $2}' | grep -o '^[0-9]*\.[0-9]*\.[0-9]*\|^[0-9]*\.[0-9]*\|^[0-9]*')
 
-          # Estrai la piattaforma, se specificata
-          PLATFORM=$(echo "$NAME_TAG_PLATFORM" | cut -d'-' -f2 | sed 's/[0-9]*$//')
+          # Estrai la piattaforma, se specificata, ignorando eventuali numeri finali
+          PLATFORM=$(echo "$NAME_TAG_PLATFORM" | awk -F'-' '{print $2}' | sed 's/[0-9]*$//')
 
           # Costruisci l'immagine base nel formato richiesto
           BASE_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
