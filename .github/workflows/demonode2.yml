@@ -9,7 +9,8 @@ on:
         default: ''
 
 env:
-  REGISTRY: docker.io  # Aggiunta della variabile REGISTRY
+  REGISTRY: docker.io
+  IMAGE_NAME: carlo02sorre/demonode
 
 jobs:
   build:
