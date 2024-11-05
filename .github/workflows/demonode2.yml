@@ -11,6 +11,8 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_NAME: carlo02sorre/demonode
+  TRIVY_CACHE_DIR: ~/.cache/trivy
+  TRIVY_UPDATE_DISABLED: true  # Disabilita aggiornamenti del DB di Trivy
 
 jobs:
   build:
@@ -83,6 +85,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         env:
           TRIVY_DB_REPOSITORY: "public.ecr.aws/aquasecurity/trivy-db"
+          TRIVY_CACHE_DIR: ${{ env.TRIVY_CACHE_DIR }}
+          TRIVY_UPDATE_DISABLED: ${{ env.TRIVY_UPDATE_DISABLED }}
         with:
           image-ref: ${{ env.BASE_IMAGE }}
           format: 'json'
